@@ -1,3 +1,5 @@
+'use strict';
+
 const request = require('request-promise');
 
 function getTomorrowAtNoon() {
@@ -35,7 +37,10 @@ function generateTomorrowsSummary(dataBlock) {
 }
 
 // maps the darksky 'icon' field to an appropriate emoji representation!
+// not supported by jshint yet - https://github.com/jshint/jshint/pull/2413
+
 const icon2Emoji = {
+    /* jshint ignore:start */
     'clear-day': '\u{2600}',
     'clear-night': '\u{1f31d}',
     'rain': '\u{1f327}',
@@ -46,7 +51,9 @@ const icon2Emoji = {
     'cloudy': '\u{1f325}',
     'partly-cloudy-day': '\u{1f324}',
     'partly-cloudy-night': '\u{2601}'
+    /* jshint ignore:end */
 };
+
 
 // turns a darksky JSON data block into a human-readable string
 // https://darksky.net/dev/docs/response#data-block
@@ -57,7 +64,7 @@ function generateWeatherReport(dataBlock, summaryVerb, temperatureVerb) {
     if (dataBlock.icon && icon2Emoji.hasOwnProperty(dataBlock.icon)) {
         report = icon2Emoji[dataBlock.icon] + ' ';
     }
-    report += `The weather ${summaryVerb} ${summary}`
+    report += `The weather ${summaryVerb} ${summary}`;
     if (!report.endsWith('.')) {
         report += '.';
     }

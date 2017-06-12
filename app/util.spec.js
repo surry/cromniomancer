@@ -12,7 +12,7 @@ describe('util module', () => {
 
             const tomorrowNoon = util.getTomorrowAtNoon();
             expect(tomorrowNoon.getHours()).to.equal(12);
-            expect(tomorrow.getDate()).to.equal(tomorrow.getDate())
+            expect(tomorrow.getDate()).to.equal(tomorrow.getDate());
 
         });
     });

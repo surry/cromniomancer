@@ -5,9 +5,8 @@ var RTM_EVENTS = require('@slack/client').RTM_EVENTS;
 var CLIENT_EVENTS = require('@slack/client').CLIENT_EVENTS;
 var schedule = require('node-schedule');
 
-const https = require('https');
+var { util } = require('./app');
 
-var {util} = require('./app');
 
 const botToken = process.env.SLACK_BOT_TOKEN || '';
 const darkskyToken = process.env.DARKSKY_TOKEN || '';
@@ -20,30 +19,29 @@ if (!botToken || !darkskyToken) {
 var rtm = new RtmClient(botToken);
 
 let botID;
-
+let botChannel;
 // The client will emit an RTM.AUTHENTICATED event on successful connection, with the `rtm.start` payload
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
+    for (const channel of rtmStartData.channels) {
+        if (channel.is_member && channel.name === 'surry-interview') {
+            botChannel = channel.id;
+        }
+    }
     // looks like self.id should always be present - https://api.slack.com/methods/rtm.start
     botID = rtmStartData.self.id.toLowerCase();
     console.log(`Logged in as ${rtmStartData.self.name}(${botID}) of team ${rtmStartData.team.name}, but not yet connected to a channel`);
 });
 
-let channel;
 let rtmConnectionOpened = false;
 
 rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
-
-    //XXX use general channel
-    if (!channel) {
-        channel = message.channel;
-    }
 
     // forgive trailing spaces and ignore case
     const normalizedMessage = message.text.trim().toLowerCase();
     let now = false;
     let tomorrow = false;
 
-    // only respond to messages where we're mentioned
+    // only respond to messages where we are mentioned
     if (normalizedMessage.indexOf(`<@${botID}>`) === -1) {
         return;
     }
@@ -59,9 +57,9 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
     if (!now && !tomorrow) {
         if (rtmConnectionOpened) {
             if (normalizedMessage.indexOf('help') !== -1) {
-                rtm.sendMessage(`<@${message.user}>, try @surry-interview 'weather now' or 'weather tomorrow'`, channel);
+                rtm.sendMessage(`<@${message.user}>, try @surry-interview 'weather now' or 'weather tomorrow'`, botChannel);
             } else {
-                rtm.sendMessage(`<@${message.user}>, I did not understand that command, try @surry-interview 'weather now' or 'weather tomorrow'`, channel);
+                rtm.sendMessage(`<@${message.user}>, I did not understand that command, try @surry-interview 'weather now' or 'weather tomorrow'`, botChannel);
                 console.log('Ignoring unknown command: ' + normalizedMessage.substring(0, 20) + '...');
             }
         }
@@ -73,7 +71,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
             if (rtmConnectionOpened) {
                 if (json.currently) {
                     let message = util.generateCurrentSummary(json.currently);
-                    rtm.sendMessage(message, channel);
+                    rtm.sendMessage(message, botChannel);
                 }
             }
         }).catch((error) => {
@@ -86,12 +84,11 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
             if (rtmConnectionOpened) {
                 if (json.daily.data.length >= 1) {
                     let message = util.generateTomorrowsSummary(json.daily.data[0]);
-                    rtm.sendMessage(message, channel);
+                    rtm.sendMessage(message, botChannel);
                 } else {
-                    rtm.sendMessage('There is no forecast for tomorrow! The end is nigh.', channel);
+                    rtm.sendMessage('There is no forecast for tomorrow! The end is nigh.', botChannel);
                 }
             }
-
         }).catch((error) => {
             console.log(error);
         });
@@ -104,7 +101,7 @@ let currentWeatherIcon;
 util.getCurrentWeatherReport().then((json) => {
     currentWeatherIcon = json.currently.icon;
 }).catch((error) => {
-    console.error(`Couldn't fetch the current forecast from darksky!`);
+    console.error(`Couldn't fetch the current forecast from darksky: ${error}`);
 });
 
 rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
@@ -118,9 +115,9 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
         util.getCurrentWeatherReport().then((json) => {
             if (json.currently.icon != currentWeatherIcon) {
                 if (rtmConnectionOpened) {
-                    let message = 'Hey everybody, it looks like there is a change in weather from yesterday.\n'
+                    let message = 'Hey everybody, it looks like there is a change in weather from yesterday.\n';
                     message += util.generateCurrentReport(json.currently);
-                    rtm.sendMessage(message, channel);
+                    rtm.sendMessage(message, botChannel);
                 }
             }
             currentWeatherIcon = json.currently.icon;
@@ -130,7 +127,7 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
 
 rtm.start();
 
-process.on('SIGINT', (code) => {
+process.on('SIGINT', () => {
     console.log('Disconnecting RTM client...');
     rtmConnectionOpened = false;
     dailyAnnounceJob.cancel();

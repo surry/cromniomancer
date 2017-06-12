@@ -4,7 +4,9 @@
   "description": "A Slackbot that reports the weather!",
   "main": "index.js",
   "scripts": {
-    "test": "mocha app/**.spec.js"
+    "test": "mocha app/**.spec.js",
+    "coverage": "istanbul cover _mocha -- app/**.spec.js",
+    "jshint": "jshint --config .jshintrc index.js app"
   },
   "repository": {
     "type": "git",
@@ -24,6 +26,8 @@
   },
   "devDependencies": {
     "chai": "^4.0.2",
+    "istanbul": "^0.4.5",
+    "jshint": "^2.9.4",
     "mocha": "^3.4.2"
   }
 }
