@@ -4,7 +4,7 @@
   "description": "A Slackbot that reports the weather!",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha app/**.spec.js"
   },
   "repository": {
     "type": "git",
@@ -21,5 +21,9 @@
     "node-schedule": "^1.2.3",
     "request": "^2.81.0",
     "request-promise": "^4.2.1"
+  },
+  "devDependencies": {
+    "chai": "^4.0.2",
+    "mocha": "^3.4.2"
   }
 }
