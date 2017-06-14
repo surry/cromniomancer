@@ -86,6 +86,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
                     // time in milliseconds since 1970 needs to be passed in to get the latest images.
                     // The RTM client doesn't allow sending attachments (see https://api.slack.com/rtm),
                     // but the Slack URL unfurling functionality automatically includes the traffic cam frame!
+                    // See http://app.ddot.dc.gov/ for more info.
                     const trafficCamUrl = `http://ie.trafficland.com/v1.0/200146/full?system=ddot&pubtoken=b4c0b819f66741b99fdb17c963f47e3bafd09b494019ee9624f1d38641ebc6bf&refreshRate=2000&t=${now}`
 
                     // the RTM client unfortunately doesn't support formatting of URLs with <URL|human-friendly-string>
