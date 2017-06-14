@@ -2,6 +2,10 @@
 
 const request = require('request-promise');
 
+// returns a Date representing tomorrow at 12pm so that
+// we can issue darksky 'time machine' requests to get an
+// idea of the weather tomorrow at a time that should be
+// relevant to someone interested in the weather
 function getTomorrowAtNoon() {
     let tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -9,16 +13,16 @@ function getTomorrowAtNoon() {
     return tomorrow;
 }
 
+// fixed coordinates used to query darksky
 const latitude = 38.8892681;
 const longitude = -77.0501425;
 const darkskyToken = process.env.DARKSKY_TOKEN || '';
-
-// we don't need the minutely or hourly forecast, so we'll exclude them
 const darkskyUrlBase = `https://api.darksky.net/forecast/${darkskyToken}/${latitude},${longitude}`;
 
 // returns a promise that resolves to the JSON representing the current weather
 // report from darksky on success
 function getCurrentWeatherReport() {
+    // we don't need the minutely or hourly forecast, so we'll exclude them
     const darkskyCurrentlyUrl = `${darkskyUrlBase}` + '?exclude=minutely,hourly';
     return request({ uri: darkskyCurrentlyUrl, json: true });
 }
@@ -38,7 +42,6 @@ function generateTomorrowsSummary(dataBlock) {
 
 // maps the darksky 'icon' field to an appropriate emoji representation!
 // not supported by jshint yet - https://github.com/jshint/jshint/pull/2413
-
 const icon2Emoji = {
     /* jshint ignore:start */
     'clear-day': '\u{2600}',
@@ -53,7 +56,6 @@ const icon2Emoji = {
     'partly-cloudy-night': '\u{2601}'
     /* jshint ignore:end */
 };
-
 
 // turns a darksky JSON data block into a human-readable string
 // https://darksky.net/dev/docs/response#data-block

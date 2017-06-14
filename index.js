@@ -20,13 +20,11 @@ var rtm = new RtmClient(botToken);
 
 let botID;
 let botChannel;
-// The client will emit an RTM.AUTHENTICATED event on successful connection, with the `rtm.start` payload
+
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
-    for (const channel of rtmStartData.channels) {
-        if (channel.is_member && channel.name === 'surry-interview') {
-            botChannel = channel.id;
-        }
-    }
+    // XXX the private surry-channel doesn't show up in the rtmStartData even though my
+    // bot was invited to the channel :(
+
     // looks like self.id should always be present - https://api.slack.com/methods/rtm.start
     botID = rtmStartData.self.id.toLowerCase();
     console.log(`Logged in as ${rtmStartData.self.name}(${botID}) of team ${rtmStartData.team.name}, but not yet connected to a channel`);
@@ -35,6 +33,10 @@ rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
 let rtmConnectionOpened = false;
 
 rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
+
+    if (!message.text) {
+        return;
+    }
 
     // forgive trailing spaces and ignore case
     const normalizedMessage = message.text.trim().toLowerCase();
@@ -45,6 +47,10 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
     if (normalizedMessage.indexOf(`<@${botID}>`) === -1) {
         return;
     }
+
+    // private channel ID isn't available on start, so respond on the channel
+    // we're mentioned on.
+    botChannel = message.channel;
 
     if (normalizedMessage.indexOf('weather now') !== -1) {
         now = true;
@@ -72,6 +78,18 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
                 if (json.currently) {
                     let message = util.generateCurrentSummary(json.currently);
                     rtm.sendMessage(message, botChannel);
+
+                    const now = new Date().getTime();
+                    // This url can be used to grab a frame from a DDOT (DC) traffic cam!
+                    // This can be used to give a rough visual of the weather. The camera is
+                    // at the intersection of 14th St and Independence St NW. Looks like the current
+                    // time in milliseconds since 1970 needs to be passed in to get the latest images.
+                    // The RTM client doesn't allow sending attachments (see https://api.slack.com/rtm),
+                    // but the Slack URL unfurling functionality automatically includes the traffic cam frame!
+                    const trafficCamUrl = `http://ie.trafficland.com/v1.0/200146/full?system=ddot&pubtoken=b4c0b819f66741b99fdb17c963f47e3bafd09b494019ee9624f1d38641ebc6bf&refreshRate=2000&t=${now}`
+
+                    // the RTM client unfortunately doesn't support formatting of URLs with <URL|human-friendly-string>
+                    rtm.sendMessage(`Here's a snapshot of the current weather at 14th St and Independence St in DC: ${trafficCamUrl}`, botChannel);
                 }
             }
         }).catch((error) => {
@@ -109,6 +127,8 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
     rtmConnectionOpened = true;
 
     let rule = new schedule.RecurrenceRule();
+
+    //schedule recurrence for 9am
     rule.hour = 9;
     dailyAnnounceJob = schedule.scheduleJob(rule, () => {
         console.log(`Checking if today's forecast is different from yesterday's...`);
