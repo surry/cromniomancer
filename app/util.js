@@ -13,6 +13,32 @@ function getTomorrowAtNoon() {
     return tomorrow;
 }
 
+// This url can be used to grab a frame from a DDOT (DC) traffic cam!
+// This can be used to give a rough visual of the weather. The camera is
+// at the intersection of 14th St and Independence St NW. Looks like the current
+// time in milliseconds since 1970 needs to be passed in to get the latest images.
+// The RTM client doesn't allow sending attachments (see https://api.slack.com/rtm),
+// but the Slack URL unfurling functionality automatically includes the traffic cam frame!
+// See http://app.ddot.dc.gov/ for more info.
+function getTrafficCamImageUrl() {
+    const trafficlandApiUrl = 'http://api.trafficland.com/v1.5/json/video_feeds?system=ddot&key=1594c8892d7fbd18181a8a6a44958b28&region=WAS';
+    let promise = request({ uri: trafficlandApiUrl, json: true }).then((json) => {
+        if (Array.isArray(json)) {
+            let cameraObj = json.find((element) => {
+                return element.publicId === '200146'
+            });
+
+            if (cameraObj) {
+                return cameraObj;
+            } else {
+                throw 'Unable to find desired traffic camera!';
+            }
+        }
+    });
+
+    return promise;
+}
+
 // fixed coordinates used to query darksky
 const latitude = 38.8892681;
 const longitude = -77.0501425;
@@ -32,12 +58,25 @@ function getTomorrowsWeatherReport() {
     return request({ uri: darkskyTomorrowUrl, json: true });
 }
 
+// groups sets of strings used to generate messages summarizing the
+// weather at some point in time
+const weatherVerbs = {
+    currently: {
+        summary: 'is currently',
+        temperature: 'feels like'
+    },
+    tomorrow: {
+        summary: 'tomorrow will be',
+        temperature: 'will feel like'
+    }
+};
+
 function generateCurrentSummary(dataBlock) {
-    return generateWeatherReport(dataBlock, 'is currently', 'feels like');
+    return generateWeatherReport(dataBlock, weatherVerbs.currently);
 }
 
 function generateTomorrowsSummary(dataBlock) {
-    return generateWeatherReport(dataBlock, 'tomorrow will be', 'will feel like');
+    return generateWeatherReport(dataBlock, weatherVerbs.tomorrow);
 }
 
 // maps the darksky 'icon' field to an appropriate emoji representation!
@@ -59,25 +98,29 @@ const icon2Emoji = {
 
 // turns a darksky JSON data block into a human-readable string
 // https://darksky.net/dev/docs/response#data-block
-function generateWeatherReport(dataBlock, summaryVerb, temperatureVerb) {
-    let report = '';
+function generateWeatherReport(dataBlock, when) {
+    let report = [];
     let summary = dataBlock.summary.toLowerCase();
 
     if (dataBlock.icon && icon2Emoji.hasOwnProperty(dataBlock.icon)) {
-        report = icon2Emoji[dataBlock.icon] + ' ';
-    }
-    report += `The weather ${summaryVerb} ${summary}`;
-    if (!report.endsWith('.')) {
-        report += '.';
-    }
-    if (dataBlock.apparentTemperature) {
-        report += ` It ${temperatureVerb} ${dataBlock.apparentTemperature}\u00b0 F.`;
+        report.push(icon2Emoji[dataBlock.icon]);
     }
 
-    return report;
+    summary = `The weather ${when.summary} ${summary}`;
+    if (!summary.endsWith('.')) {
+        summary += '.';
+    }
+    report.push(summary);
+
+    if (dataBlock.apparentTemperature) {
+        report.push(`It ${when.temperature} ${dataBlock.apparentTemperature}\u00b0 F.`);
+    }
+
+    return report.join(' ');
 }
 
 module.exports.getTomorrowAtNoon = getTomorrowAtNoon;
+module.exports.getTrafficCamImageUrl = getTrafficCamImageUrl;
 module.exports.getCurrentWeatherReport = getCurrentWeatherReport;
 module.exports.getTomorrowsWeatherReport = getTomorrowsWeatherReport;
 module.exports.generateCurrentSummary = generateCurrentSummary;
