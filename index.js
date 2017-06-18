@@ -11,6 +11,12 @@ const { util } = require('./app');
 const botToken = process.env.SLACK_BOT_TOKEN || '';
 const darkskyToken = process.env.DARKSKY_TOKEN || '';
 
+// fixed coordinates used to query darksky
+const dcLocation = {
+    latitude: 38.8892681,
+    longitude: -77.0501425
+};
+
 if (!botToken || !darkskyToken) {
     console.error('SLACK_BOT_TOKEN and DARKSKY_TOKEN must be passed as environment variables!');
     process.exit(1);
@@ -77,7 +83,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
     }
 
     if (now) {
-        util.getCurrentWeatherReport().then((json) => {
+        util.getCurrentWeatherReport(dcLocation).then((json) => {
             if (json.currently) {
                 let message = util.generateCurrentSummary(json.currently);
                 sendMessage(message, botChannel);
@@ -89,7 +95,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
 
                 util.getTrafficCamImageUrl().then((camera) => {
                     // the RTM client unfortunately doesn't support formatting of URLs with <URL|human-friendly-string>
-                    sendMessage(`Here's a snapshot of the current weather at ${camera.name}: ${camera.content.fullJpeg}`, botChannel);
+                    sendMessage(`Here's a snapshot of the current weather at ${camera.name}: ${camera.content.fullJpeg}&t=${Date.now()}`, botChannel);
                 }).catch(console.error);
 
             }
@@ -97,7 +103,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
     }
 
     if (tomorrow) {
-        util.getTomorrowsWeatherReport().then((json) => {
+        util.getTomorrowsWeatherReport(dcLocation).then((json) => {
             if (json.daily.data.length >= 1) {
                 let message = util.generateTomorrowsSummary(json.daily.data[0]);
                 sendMessage(message, botChannel);
@@ -111,7 +117,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
 let dailyAnnounceJob;
 let currentWeatherIcon;
 
-util.getCurrentWeatherReport().then((json) => {
+util.getCurrentWeatherReport(dcLocation).then((json) => {
     currentWeatherIcon = json.currently.icon;
 }).catch((error) => {
     console.error(`Couldn't fetch the current forecast from darksky: ${error}`);
@@ -128,7 +134,7 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, () => {
     rule.minute = 0;
     dailyAnnounceJob = schedule.scheduleJob(rule, () => {
         console.log(`Checking if today's forecast is different from yesterday's...`);
-        util.getCurrentWeatherReport().then((json) => {
+        util.getCurrentWeatherReport(dcLocation).then((json) => {
             if (json.currently.icon != currentWeatherIcon) {
                 let message = 'Hey everybody, it looks like there is a change in weather from yesterday.\n';
                 message += util.generateCurrentReport(json.currently);

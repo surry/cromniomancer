@@ -39,22 +39,19 @@ function getTrafficCamImageUrl() {
     return promise;
 }
 
-// fixed coordinates used to query darksky
-const latitude = 38.8892681;
-const longitude = -77.0501425;
 const darkskyToken = process.env.DARKSKY_TOKEN || '';
-const darkskyUrlBase = `https://api.darksky.net/forecast/${darkskyToken}/${latitude},${longitude}`;
+const darkskyUrlBase = `https://api.darksky.net/forecast/${darkskyToken}`;
 
 // returns a promise that resolves to the JSON representing the current weather
 // report from darksky on success
-function getCurrentWeatherReport() {
+function getCurrentWeatherReport(location) {
     // we don't need the minutely or hourly forecast, so we'll exclude them
-    const darkskyCurrentlyUrl = `${darkskyUrlBase}` + '?exclude=minutely,hourly';
+    const darkskyCurrentlyUrl = `${darkskyUrlBase}/${location.latitude},${location.longitude}` + '?exclude=minutely,hourly';
     return request({ uri: darkskyCurrentlyUrl, json: true });
 }
 
-function getTomorrowsWeatherReport() {
-    const darkskyTomorrowUrl = `${darkskyUrlBase}` + getTomorrowAtNoon().getTime() + '?exclude=currently,minutely,hourly';
+function getTomorrowsWeatherReport(location) {
+    const darkskyTomorrowUrl = `${darkskyUrlBase}/${location.latitude},${location.longitude},` + Math.floor(getTomorrowAtNoon().getTime() / 1000 ) + '?exclude=currently,minutely,hourly';
     return request({ uri: darkskyTomorrowUrl, json: true });
 }
 
